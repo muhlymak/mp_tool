@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:18
+    container_name: mp_test
+    environment:
+      POSTGRES_USER: mpuser
+      POSTGRES_PASSWORD: mppassword
+      POSTGRES_DB: mpdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+volumes:
+  pg_data:

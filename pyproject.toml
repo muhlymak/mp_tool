@@ -1,0 +1,25 @@
+[project]
+name = "mp"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Maxim Mukhlynin",email = "muhlymak@icloud.com"}
+]
+readme = "README.md"
+requires-python = ">=3.11,<4.0"
+dependencies = [
+    "pyodbc (>=5.2.0,<6.0.0)",
+    "polars (>=1.33.1,<2.0.0)",
+    "arrow-odbc (>=9.3.3,<10.0.0)",
+    "adbc-driver-postgresql (>=1.8.0,<2.0.0)",
+    "pandas (>=2.3.3,<3.0.0)",
+    "sqlalchemy>=2.0.43,<3.0.0",
+    "psycopg2 (>=2.9.10,<3.0.0)",
+    "python-dotenv (>=1.1.1,<2.0.0)",
+    "loguru (>=0.7.3,<0.8.0)",
+    "typer[all]>=0.19.2",
+    "fastexcel>=0.16.0",
+    "httpx>=0.28.1",
+    "openpyxl>=3.1.5",
+]
+
