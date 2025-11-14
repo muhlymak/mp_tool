@@ -1,2 +1,5 @@
 *.env
+.venv
 /помойка
+**/__pycache__/
+**/*.xlsx
