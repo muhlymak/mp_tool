@@ -3,6 +3,8 @@ from db.connections import mp_engine, visiology_engine
 import typer
 from loguru import logger
 
+from parsers.connect_cards import CardsConnector
+from parsers.major import MajorUploader
 from parsers.voronka_wb import read_and_update_voronka_wb
 from repricers.lm.api_client import LmApiClient
 from repricers.lm.lm_repricer import prepare_lamoda_price_payload
@@ -19,6 +21,23 @@ def baza_cen_update():
     uploader = BazaCenUploader(from_db=visiology_engine, to_db=mp_engine)
     uploader.update_baza_cen()
     typer.echo("✅ Данные успешно обновлены в базе MP.")
+
+
+@app.command("mjr-update")
+def major_update():
+    """Загружаем данные major из Visiology и обновляем MP базу"""
+    uploader = MajorUploader(from_db=visiology_engine, to_db=mp_engine)
+    uploader.update_major()
+    typer.echo("✅ Данные успешно обновлены в базе MP.")
+
+
+@app.command("wb-cards-connect")
+def connect_cards_start():
+    """Объединяем карточки"""
+    uploader = CardsConnector(from_db=mp_engine, to_db=mp_engine)
+    uploader.update_cards()
+    typer.echo("✅ Обработка завершена")
+
 
 
 @app.command("wb-voronka-update")
@@ -39,7 +58,7 @@ def reprice_wb():
         f"Тело ответа: {response.json()}"
     )
 
-@app.command("lm_repice")
+@app.command("lm-reprice")
 def reprice_lm():
     api_cleient = LmApiClient()
     data = prepare_lamoda_price_payload(xlsx_path="data/lm/reprice.xlsx")

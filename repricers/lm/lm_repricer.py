@@ -11,7 +11,7 @@ def prepare_lamoda_price_payload(xlsx_path: str, start_date: str | None = None) 
     Если sale_price не указан, то поле sale_price и даты не добавляются.
     """
     # Читаем Excel
-    df = pd.read_excel(xlsx_path, sheet_name="Лист1", dtype={"mdc": str, "nm_id": str})
+    df = pd.read_excel(xlsx_path, sheet_name="main", dtype={"mdc": str, "nm_id": str})
 
     # Определяем даты по умолчанию (МСК)
     msk = timezone(timedelta(hours=3))

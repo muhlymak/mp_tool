@@ -3,6 +3,8 @@ from loguru import logger
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import insert
 
+from helpers.telegram import send_telegram_message
+
 class BazaCenUploader:
     def __init__(self, from_db, to_db):
         self.from_db = from_db
@@ -80,24 +82,37 @@ class BazaCenUploader:
 
 
 
-    def _upload_data(self, to_db):
-        logger.info('Загружаем данные в базу MP')
+    def _upload_data(self, to_db, batch_size=10000):
+        logger.info('Загружаем данные в базу MP батчами')
+
         meta = sa.MetaData()
-        table = sa.Table("baza_cen", meta, autoload_with=to_db)  # подтягиваем структуру из БД
+        table = sa.Table("baza_cen", meta, autoload_with=to_db)
+
+        records = self.df.to_dict(orient="records")
 
         with to_db.begin() as conn:
-            # формируем upsert
-            stmt = insert(table).values(self.df.to_dict(orient="records"))
-            update_dict = {
-                c.name: stmt.excluded[c.name] for c in table.columns if c.name != "mdc"
-            }
-            stmt = stmt.on_conflict_do_update(
-                index_elements=["mdc"],
-                set_=update_dict
-            )
-            conn.execute(stmt)
+            for i in range(0, len(records), batch_size):
+                chunk = records[i:i + batch_size]
 
-        logger.success('Данные успешно загружены в базу MP')
+                stmt = insert(table).values(chunk)
+
+                # формируем UPSERT
+                update_dict = {
+                    c.name: stmt.excluded[c.name]
+                    for c in table.columns
+                    if c.name != "mdc"
+                }
+
+                stmt = stmt.on_conflict_do_update(
+                    index_elements=["mdc"],
+                    set_=update_dict
+                )
+
+                conn.execute(stmt)
+                logger.info(f'Загружен батч {i // batch_size + 1}: {len(chunk)} строк')
+
+        logger.success('Все данные успешно загружены в базу MP')
+
 
 
     def upload_data2(self, to_db):
@@ -125,10 +140,18 @@ class BazaCenUploader:
             conn.commit()
 
 
+   
+    def _send_telegram(self, message: str):
+        send_telegram_message(message)
 
     def update_baza_cen(self):
-        self._get_data(self.from_db)
-        self._upload_data(self.to_db)
-    
-
+        try:
+            self._get_data(self.from_db)
+            self._upload_data(self.to_db)
+        except Exception as e:
+            logger.exception("Ошибка при обновлении baza_cen")
+            self._send_telegram(f"❌ Ошибка обновления baza_cen: {e}")
+            raise
+        else:
+            self._send_telegram("✅ Данные baza_cen обновлены успешно")
 

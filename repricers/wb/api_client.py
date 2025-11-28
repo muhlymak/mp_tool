@@ -19,3 +19,12 @@ class WbApiClient:
                 json=data
             )
             return response
+        
+    def post_connect_cards(self, data):
+        with httpx.Client() as client:
+            response = client.post(
+                "https://content-api.wildberries.ru/content/v2/cards/moveNm",
+                headers=self.headers, 
+                json=data
+            )
+            return response
