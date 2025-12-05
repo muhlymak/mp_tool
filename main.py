@@ -5,11 +5,12 @@ from loguru import logger
 
 from parsers.connect_cards import CardsConnector
 from parsers.major import MajorUploader
+from parsers.stores_stock import StoresStockUploader
 from parsers.voronka_wb import read_and_update_voronka_wb
 from repricers.lm.api_client import LmApiClient
 from repricers.lm.lm_repricer import prepare_lamoda_price_payload
 from repricers.wb.api_client import WbApiClient
-from repricers.wb.wb_repricer import prepare_reprice_data
+from repricers.wb.wb_repricer import chunked, prepare_reprice_data
 
 app = typer.Typer(help="CLI утилита для загрузки данных в базу MP")
 
@@ -31,6 +32,14 @@ def major_update():
     typer.echo("✅ Данные успешно обновлены в базе MP.")
 
 
+@app.command("stores-stock-update")
+def stores_stock_update():
+    """Загружаем данные stores stock из Visiology и обновляем MP базу"""
+    uploader = StoresStockUploader(from_db=visiology_engine, to_db=mp_engine)
+    uploader.update_stores_stock()
+    typer.echo("✅ Данные успешно обновлены в базе MP.")
+
+
 @app.command("wb-cards-connect")
 def connect_cards_start():
     """Объединяем карточки"""
@@ -48,15 +57,27 @@ def update_voronka_wb():
 @app.command("wb-reprice")
 def reprice_wb():
     """Перекидываем цены из файла в API WB"""
-    data = prepare_reprice_data(file="data/wb/reprice.xlsx")
-    logger.info("Инициализирую клиента WB API...")
+
+    logger.info("Подготавливаю данные для переоценки...")
+    rows = prepare_reprice_data(file="data/wb/reprice.xlsx")
+
+    logger.info(f"Всего строк: {len(rows)}")
+
     wb_api_client = WbApiClient()
-    logger.info("Отправляю запрос на переоценку...")
-    response = wb_api_client.post_reprice(data=data)
-    logger.info(
-        f"Запрос на переоценку отправлен. Статус код: {response.status_code} - "
-        f"Тело ответа: {response.json()}"
-    )
+
+    # Размер чанка
+    CHUNK_SIZE = 999
+
+    for idx, chunk in enumerate(chunked(rows, CHUNK_SIZE), start=1):
+        payload = {"data": chunk}
+        logger.info(f"Отправляю пачку {idx} ({len(chunk)} элементов)...")
+        response = wb_api_client.post_reprice(payload)
+        logger.info(
+            f"Пачка {idx} отправлена. "
+            f"HTTP {response.status_code}. "
+            f"Ответ: {response.json()}"
+        )
+
 
 @app.command("lm-reprice")
 def reprice_lm():

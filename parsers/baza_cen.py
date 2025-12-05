@@ -78,6 +78,13 @@ class BazaCenUploader:
         self.df = pd.read_sql(self.query, from_db)
         self.df['price_retail'] = pd.to_numeric(self.df['price_retail'], errors='coerce').fillna(0).astype(int)
         self.df['cost'] = pd.to_numeric(self.df['cost'], errors='coerce').fillna(0)
+        self.df['mdc'] = (
+            self.df['mdc']
+            .astype(str)
+            .str.replace('Х', 'X')   # русская Х → английская X
+            .str.replace('х', 'x')   # если встретится строчная (на всякий случай)
+        )
+
 
 
 

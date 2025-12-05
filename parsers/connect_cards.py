@@ -1,13 +1,9 @@
-from pprint import pprint
 import time
 import pandas as pd
 from loguru import logger
-import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import insert
-import httpx
 from helpers.telegram import send_telegram_message
-from repricers.lm import api_client
 from repricers.wb.api_client import WbApiClient
+
 
 class CardsConnector:
     def __init__(self, from_db, to_db):
@@ -17,7 +13,6 @@ class CardsConnector:
 
     def _send_telegram(self, message: str):
         send_telegram_message(message)
-
 
     def _get_data(self, from_db):
         """
@@ -31,9 +26,9 @@ class CardsConnector:
                     nm_id::bigint AS nm_id,
                     imt_id::bigint AS bundle_id
                 FROM wb.cards
-                WHERE split_part(vendor_code, '-', 1) = '376DO'
+                --WHERE split_part(vendor_code, '-', 1) = 'RAB06W'
                 ORDER BY vendor_code
-                LIMIT 50
+                --LIMIT 50
             )
             SELECT 
                 md,
@@ -46,20 +41,20 @@ class CardsConnector:
             GROUP BY md
             HAVING COUNT(DISTINCT bundle_id) > 1
         """
-        logger.info('Проверяю наличие разъединенных карточек в рамках одной модели')
+        logger.info("Проверяю наличие разъединенных карточек в рамках одной модели")
         self.df = pd.read_sql(self.query, from_db)
 
     def update_cards(self):
         try:
             self._get_data(self.from_db)
-            logger.info('Обрабатываю данные по строкам')
+            logger.info("Обрабатываю данные по строкам")
             for index, row in self.df.iterrows():
-                data = {
-                    "targetIMT": row['bundle_ids'][0],
-                        "nmIDs": row['nm_ids']
-                        }
+                data = {"targetIMT": row["bundle_ids"][0], "nmIDs": row["nm_ids"]}
                 logger.info(f"Объединяю {row['md']} - {data}")
-                resp = self.api_client.post_connect_cards(data)
+                try:
+                    resp = self.api_client.post_connect_cards(data)
+                except Exception as e:
+                    logger.error(f"Ошибка объединения карточки {row['md']} - {e}")
                 logger.info(f"Ответ сервера - {resp.status_code} - {resp.json()}")
                 time.sleep(1)
 
